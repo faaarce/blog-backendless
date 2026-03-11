@@ -6,7 +6,7 @@ import "./index.css";
 import Home from "./pages/home";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
-
+import CreateBlog from "./pages/CreateBlog";
 
 const router = createBrowserRouter([
   {
@@ -18,9 +18,13 @@ const router = createBrowserRouter([
     element: <Register />,
   },
   {
-       path: "/login",
+    path: "/login",
     element: <Login />,
-  }
+  },
+  {
+    path: "/create",
+    element: <CreateBlog />,
+  },
 ]);
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
