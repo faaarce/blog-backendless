@@ -5,6 +5,8 @@ import { RouterProvider } from "react-router/dom";
 import "./index.css";
 import Home from "./pages/home";
 import Register from "./pages/Register";
+import Login from "./pages/Login";
+
 
 const router = createBrowserRouter([
   {
@@ -15,6 +17,10 @@ const router = createBrowserRouter([
     path: "/register",
     element: <Register />,
   },
+  {
+       path: "/login",
+    element: <Login />,
+  }
 ]);
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
