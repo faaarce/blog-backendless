@@ -1,7 +1,73 @@
 import { FileText, User, Image, File as FileEdit } from "lucide-react";
 import Navbar from "../components/Navbar";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { axiosInstance } from "../lib/axios";
+
+/* ✅ Schema */
+const formSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  description: z.string().min(1, "Description is required"),
+  author: z.string().min(1, "Author is required"),
+  thumbnail: z.instanceof(File).optional(),
+  content: z.string().min(1, "Content is required"),
+});
+
+/* ✅ Type inferred from schema */
+type FormDataCreateBlog = z.infer<typeof formSchema>;
+
+const generateRandomString = (length: number = 10) => {
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "";
+
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+
+  return result;
+};
+
+interface FileServiceResponse {
+  fileURL: string;
+}
 
 function CreateBlog() {
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors },
+  } = useForm<FormData>({
+    resolver: zodResolver(formSchema), // ❗ FIXED
+  });
+
+  const onSubmit = async (data: FormDataCreateBlog) => {
+    try {
+      const form = new FormData();
+      form.append("file", data.thumbnail);
+      const folderName = "images";
+      const fileName = generateRandomString(10);
+      const response = await axiosInstance.post(
+        `/files/$(folderName)/$(fileName)`,
+        form,
+      );
+
+      await axiosInstance.post(`/data/Blogs`, {
+        thumbnail: response.data.fileURL,
+        author: data.author,
+        description: data.description,
+        title: data.title,
+        content: data.content
+      });
+
+      alert("Create Blog Success")
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
@@ -15,105 +81,118 @@ function CreateBlog() {
             Share your thoughts and ideas with the community
           </p>
 
-          <form className="space-y-6">
+          <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
+            {/* TITLE */}
             <div>
-              <label
-                htmlFor="title"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Title
               </label>
               <div className="relative">
                 <FileText className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                 <input
                   type="text"
-                  id="title"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none transition"
+                  className="w-full pl-10 pr-4 py-3 border rounded-lg"
                   placeholder="Enter your blog title"
+                  {...register("title")}
                 />
               </div>
+              {errors.title && (
+                <p className="text-red-500 text-xs mt-1">
+                  {errors.title.message}
+                </p>
+              )}
             </div>
 
+            {/* DESCRIPTION */}
             <div>
-              <label
-                htmlFor="description"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Description
               </label>
               <textarea
-                id="description"
                 rows={3}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none transition resize-none"
-                placeholder="Write a brief description of your blog"
+                className="w-full px-4 py-3 border rounded-lg"
+                placeholder="Write a brief description"
+                {...register("description")}
               />
+              {errors.description && (
+                <p className="text-red-500 text-xs mt-1">
+                  {errors.description.message}
+                </p>
+              )}
             </div>
 
+            {/* AUTHOR */}
             <div>
-              <label
-                htmlFor="author"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Author
               </label>
               <div className="relative">
                 <User className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                 <input
                   type="text"
-                  id="author"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none transition"
+                  className="w-full pl-10 pr-4 py-3 border rounded-lg"
                   placeholder="Your name"
+                  {...register("author")} // ❗ FIXED (was description)
                 />
               </div>
+              {errors.author && (
+                <p className="text-red-500 text-xs mt-1">
+                  {errors.author.message}
+                </p>
+              )}
             </div>
 
+            {/* THUMBNAIL */}
             <div>
-              <label
-                htmlFor="thumbnail"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Thumbnail Image
               </label>
               <div className="relative">
                 <Image className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                 <input
                   type="file"
-                  id="thumbnail"
                   accept="image/*"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none transition file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-yellow-50 file:text-yellow-700 hover:file:bg-yellow-100"
+                  className="w-full pl-10 pr-4 py-3 border rounded-lg"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setValue("thumbnail", file); // ❗ FIXED (added setValue)
+                    }
+                  }}
                 />
               </div>
             </div>
 
+            {/* CONTENT */}
             <div>
-              <label
-                htmlFor="content"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Content
               </label>
               <div className="relative">
                 <FileEdit className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                 <textarea
-                  id="content"
                   rows={12}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none transition resize-none"
-                  placeholder="Write your blog content here..."
+                  className="w-full pl-10 pr-4 py-3 border rounded-lg"
+                  placeholder="Write your blog content..."
+                  {...register("content")}
                 />
               </div>
+              {errors.content && (
+                <p className="text-red-500 text-xs mt-1">
+                  {errors.content.message}
+                </p>
+              )}
             </div>
 
+            {/* BUTTONS */}
             <div className="flex gap-4">
               <button
                 type="submit"
-                className="flex-1 bg-yellow-500 text-white py-3 rounded-lg font-semibold hover:bg-purple-600 transition-colors shadow-md"
+                className="flex-1 bg-yellow-500 text-white py-3 rounded-lg font-semibold"
               >
                 Publish Blog
               </button>
-              <button
-                type="button"
-                className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
-              >
+              <button type="button" className="px-6 py-3 border rounded-lg">
                 Cancel
               </button>
             </div>
